@@ -211,19 +211,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Every `run` below is a block scalar. A plain YAML scalar treats " #" as
+      # the start of a comment, which silently truncates the command -- and an
+      # echo with an unbalanced quote then fails the job for no useful reason.
+      # The commentary lives here, where it is for whoever reads the workflow.
+
+      # The API ships as one image tagged with the commit SHA, never `latest`,
+      # so a rollback is "point at the previous SHA" rather than "rebuild and
+      # hope". The two frontends are static bundles and Vite inlines VITE_* at
+      # build time, so each environment needs its own build.
       - name: Push images to the registry
         run: |
           echo "docker build -t $REGISTRY/peblo-api:$GITHUB_SHA ./api"
           echo "docker push  $REGISTRY/peblo-api:$GITHUB_SHA"
-          echo "# CMS and viewer are static bundles: build once per environment,"
-          echo "# because VITE_API_BASE_URL is inlined at build time."
           echo "docker build --build-arg VITE_API_BASE_URL=$PROD_API_URL -t $REGISTRY/peblo-cms:$GITHUB_SHA ./cms"
 
+      # Its own step, before the rollout, with its own logs, and it stops the
+      # deploy if it fails. With more than one replica this cannot be folded
+      # into the rollout: a replica still running the old code has to survive
+      # the new schema, which is why migrations here are additive-only and a
+      # column is dropped a release *after* the code that used it.
       - name: Run migrations against production
-        run: echo "alembic upgrade head   # separate task, own logs, fails the deploy loudly"
+        run: |
+          echo "alembic upgrade head"
 
+      # Rolling, one replica at a time.
       - name: Roll out
-        run: echo "deploy peblo-api:$GITHUB_SHA  # rolling, one replica at a time"
+        run: |
+          echo "deploy peblo-api:$GITHUB_SHA"
 
+      # A failure here fails the job, so a broken deploy shows up in CI rather
+      # than in Slack an hour later.
       - name: Smoke check the deployment
-        run: echo "curl -fsS \$PROD_API_URL/health"
+        run: |
+          echo "curl -fsS $PROD_API_URL/health"
