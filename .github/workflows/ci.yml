@@ -42,7 +42,11 @@ jobs:
       # The default (/data/storage) only exists inside the Docker image, which
       # creates and chowns it. A bare runner cannot create /data, so point the
       # object store somewhere the job can actually write.
-      STORAGE_LOCAL_ROOT: ${{ runner.temp }}/peblo-storage
+      #
+      # `github.workspace`, not `runner.temp`: the `runner` context is not
+      # available in job-level env, and referencing it there makes the whole
+      # workflow file invalid -- GitHub then schedules no jobs at all.
+      STORAGE_LOCAL_ROOT: ${{ github.workspace }}/.ci-storage
 
     steps:
       - uses: actions/checkout@v4
