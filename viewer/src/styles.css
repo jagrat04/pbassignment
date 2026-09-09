@@ -1,0 +1,437 @@
+/* Dark, edge-to-edge, built around artwork. Rows scroll horizontally and snap;
+   everything reserves its aspect ratio before the image arrives so nothing on
+   the page jumps when a picture finally loads. */
+
+:root {
+  --bg: #0b0d12;
+  --panel: #141821;
+  --ink: #f3f5f9;
+  --muted: #98a1b3;
+  --line: #232936;
+  --brand: #ffc93c;
+  --brand-ink: #14161c;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    15px/1.55 "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 28px;
+  background: linear-gradient(180deg, rgba(11, 13, 18, 0.97), rgba(11, 13, 18, 0.75));
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar .brand {
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  color: var(--brand);
+}
+
+.topbar nav {
+  display: flex;
+  gap: 18px;
+  flex: 1;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.topbar nav a.active {
+  color: var(--ink);
+}
+
+.searchbox {
+  display: flex;
+  gap: 8px;
+}
+
+.searchbox input {
+  width: 220px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #10141c;
+  color: var(--ink);
+  font: inherit;
+}
+
+.searchbox input:focus {
+  outline: 2px solid var(--brand);
+}
+
+/* ------------------------------------------------------------------- hero */
+
+.hero {
+  position: relative;
+  min-height: min(62vh, 520px);
+  display: flex;
+  align-items: flex-end;
+  padding: 40px 28px;
+  overflow: hidden;
+}
+
+/* The banner fills the hero rather than sitting in the flex flow: it is the
+   backdrop, not a column beside the copy. Overrides the 16:9 box `.art` uses
+   everywhere else, because the hero's height is set by its own content. */
+.hero > .art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+
+.hero .scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(11, 13, 18, 0.95) 0%, rgba(11, 13, 18, 0.55) 55%, transparent 100%),
+    linear-gradient(0deg, var(--bg) 2%, transparent 45%);
+}
+
+.hero .copy {
+  position: relative;
+  max-width: 540px;
+}
+
+.hero h1 {
+  font-size: clamp(30px, 5vw, 52px);
+  line-height: 1.05;
+  margin: 0 0 12px;
+  letter-spacing: -0.03em;
+}
+
+.hero p {
+  color: #d5dae5;
+  margin: 0 0 18px;
+}
+
+/* ------------------------------------------------------------------- rows */
+
+main {
+  padding-bottom: 72px;
+}
+
+.section {
+  margin: 34px 0;
+}
+
+.section h2 {
+  font-size: 19px;
+  margin: 0 0 12px;
+  padding: 0 28px;
+  text-transform: capitalize;
+  letter-spacing: -0.01em;
+}
+
+.rail {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 4px 28px 14px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.rail::-webkit-scrollbar {
+  height: 8px;
+}
+.rail::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.card {
+  flex: 0 0 auto;
+  width: 168px;
+  scroll-snap-align: start;
+  transition: transform 0.18s ease;
+}
+
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-4px);
+  outline: none;
+}
+
+.card .title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 8px;
+  line-height: 1.3;
+}
+
+.card .meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* --------------------------------------------------------------- artwork */
+
+.art {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  /* The placeholder holds the exact space the image will take, so a slow
+     picture never reflows the row underneath it. */
+  background: linear-gradient(110deg, #171c26 30%, #1e2431 50%, #171c26 70%);
+  background-size: 220% 100%;
+  animation: sweep 1.5s linear infinite;
+}
+
+.art.poster {
+  aspect-ratio: 2 / 3;
+}
+.art.banner,
+.art.thumb {
+  aspect-ratio: 16 / 9;
+}
+
+.art.loaded {
+  animation: none;
+  background: #171c26;
+}
+
+.art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.art img.shown {
+  opacity: 1;
+}
+
+.art .fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 10px;
+}
+
+@keyframes sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .art {
+    animation: none;
+  }
+  .art img {
+    transition: none;
+  }
+  .card {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------- detail */
+
+.page {
+  padding: 0 28px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.detail-head {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 28px;
+  padding: 32px 0;
+}
+
+@media (max-width: 680px) {
+  .detail-head {
+    grid-template-columns: 1fr;
+  }
+  .card {
+    width: 136px;
+  }
+}
+
+.detail-head h1 {
+  margin: 0 0 8px;
+  font-size: clamp(26px, 4vw, 38px);
+  letter-spacing: -0.02em;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  background: #161b25;
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.chip.lang {
+  color: var(--brand);
+  border-color: #3a3520;
+  background: #201d12;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  margin: 26px 0 18px;
+  flex-wrap: wrap;
+}
+
+.tabs button {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 9px 14px;
+}
+
+.tabs button[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--brand);
+}
+
+.episode {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 18px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 680px) {
+  .episode {
+    grid-template-columns: 130px 1fr;
+    gap: 12px;
+  }
+}
+
+.episode h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.episode p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------------- states */
+
+.empty {
+  text-align: center;
+  padding: 72px 20px;
+  color: var(--muted);
+}
+
+.empty strong {
+  display: block;
+  color: var(--ink);
+  font-size: 17px;
+  margin-bottom: 6px;
+}
+
+.pillbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 16px 28px 0;
+}
+
+.pillbar select {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #10141c;
+  color: var(--ink);
+  font: inherit;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 18px;
+  padding: 18px 0 40px;
+}
+
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 13px;
+}
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-weight: 700;
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+.btn.ghost {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+}

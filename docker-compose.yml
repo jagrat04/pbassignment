@@ -1,0 +1,72 @@
+name: peblo-tv-mini
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-peblo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-peblo}
+      POSTGRES_DB: ${POSTGRES_DB:-peblo}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      # The API waits on this, so `docker compose up` is a single command with
+      # no "try again once the database is ready".
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-peblo} -d ${POSTGRES_DB:-peblo}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-peblo}:${POSTGRES_PASSWORD:-peblo}@db:5432/${POSTGRES_DB:-peblo}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      STORAGE_LOCAL_ROOT: /data/storage
+      STORAGE_PUBLIC_BASE_URL: ${STORAGE_PUBLIC_BASE_URL:-http://localhost:8000/media}
+      REFERENCE_PATH: /seed/reference.json
+      SEED_PATH: /seed/seed_shows.json
+      SEED_ASSETS_DIR: /seed/assets
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5174
+      SEED_ON_START: ${SEED_ON_START:-true}
+    volumes:
+      # The content team's files, read-only: the API never writes to them.
+      # Kept out of /data so the storage volume below is not nested inside a
+      # read-only bind mount.
+      - ./data:/seed:ro
+      - storage_data:/data/storage
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  cms:
+    build:
+      context: ./cms
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  viewer:
+    build:
+      context: ./viewer
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "5174:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  storage_data:

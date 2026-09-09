@@ -1,0 +1,15 @@
+# Normalise to LF in the repository.
+* text=auto eol=lf
+
+# These run inside Linux containers. A CRLF line ending here turns the shebang
+# into `/bin/sh\r` and the container dies with "no such file or directory",
+# which is a genuinely horrible thing to debug on someone else's machine.
+*.sh          text eol=lf
+entrypoint.sh text eol=lf
+Dockerfile    text eol=lf
+*.conf        text eol=lf
+
+# Binary
+*.jpg binary
+*.png binary
+*.webp binary

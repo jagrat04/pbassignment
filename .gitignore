@@ -1,0 +1,18 @@
+# secrets — .env.example is committed, .env never is
+.env
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# node
+node_modules/
+dist/
+
+# local storage volume, if anyone runs the API outside docker
+api/storage/
