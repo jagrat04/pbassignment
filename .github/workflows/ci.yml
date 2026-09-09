@@ -39,6 +39,10 @@ jobs:
       SEED_ASSETS_DIR: ${{ github.workspace }}/data/assets
       JWT_SECRET: ci-secret
       STORAGE_BACKEND: local
+      # The default (/data/storage) only exists inside the Docker image, which
+      # creates and chowns it. A bare runner cannot create /data, so point the
+      # object store somewhere the job can actually write.
+      STORAGE_LOCAL_ROOT: ${{ runner.temp }}/peblo-storage
 
     steps:
       - uses: actions/checkout@v4
@@ -153,7 +157,7 @@ jobs:
 
       - name: The seeded catalogue is actually being served
         run: |
-          curl -fsS http://localhost:8000/catalog | python -c "
+          curl -fsS http://localhost:8000/catalog | python3 -c "
           import json, sys
           catalog = json.load(sys.stdin)
           assert catalog['shows'], 'catalogue is empty after seeding'

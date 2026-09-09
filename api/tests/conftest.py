@@ -7,6 +7,7 @@ it would mean testing something other than what ships.
 """
 
 import os
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -14,7 +15,18 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Set before any app module is imported: Settings is read at import time.
+# These must be set at *import* time, not in a fixture.
+#
+# `app.config.settings` is a module-level singleton bound the moment app.config
+# is first imported, and app.main / app.storage close over that instance. A
+# fixture that sets an environment variable later is therefore too late: those
+# modules already read the old value. conftest.py is imported before any test
+# module, which makes this the last safe place to do it.
+#
+# STORAGE_LOCAL_ROOT matters most. Its default (/data/storage) exists only
+# inside the Docker image, which creates and chowns it. On a bare CI runner the
+# non-root user cannot create /data at all, and every test that touches storage
+# dies with PermissionError.
 os.environ.setdefault(
     "DATABASE_URL", "postgresql+psycopg://peblo:peblo@127.0.0.1:5433/peblo_test"
 )
@@ -23,13 +35,15 @@ os.environ.setdefault("SEED_PATH", str(REPO_ROOT / "data" / "seed_shows.json"))
 os.environ.setdefault("SEED_ASSETS_DIR", str(REPO_ROOT / "data" / "assets"))
 os.environ.setdefault("JWT_SECRET", "test-secret")
 os.environ.setdefault("STORAGE_BACKEND", "local")
+os.environ.setdefault(
+    "STORAGE_LOCAL_ROOT", tempfile.mkdtemp(prefix="peblo-test-storage-")
+)
 
 
 @pytest.fixture(scope="session")
-def storage_root(tmp_path_factory) -> Path:
-    root = tmp_path_factory.mktemp("storage")
-    os.environ["STORAGE_LOCAL_ROOT"] = str(root)
-    return root
+def storage_root() -> Path:
+    """Where the tests' object storage actually lives. Chosen above, at import."""
+    return Path(os.environ["STORAGE_LOCAL_ROOT"])
 
 
 @pytest.fixture(scope="session")
